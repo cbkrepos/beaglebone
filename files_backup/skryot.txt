@@ -1,0 +1,9 @@
+cd linux-stable-rcn-ee/drivers/iio/dac
+modprobe industrialio
+insmod ad5380.ko
+cp ad5380.ko /lib/modules/4.2.3-armv7-x2/kernel/drivers/iio/dac
+modprobe ad5380
+lsmod
+cd /sys/bus/i2c/devices/i2c-1
+edw ad5392-5 0x54 > newdevice
+

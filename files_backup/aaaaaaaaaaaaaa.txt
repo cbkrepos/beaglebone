@@ -1,0 +1,140 @@
+# /etc/modules: kernel modules to load at boot time.
+#
+# This file contains the names of kernel modules that should be loaded
+# at boot time, one per line. Lines beginning with "#" are ignored.
+
+industrialio
+ad5380
+gpio-pca953x
+
+
+#!/bin/bash
+mkdir /sys/kernel/config/device-tree/overlays/i2c
+cat /root/am335x-bone-i2c1.dtbo > /sys/kernel/config/device-tree/overlays/i2c/d$
+i2cdetect -l
+
+
+
+#! /bin/sh
+# /etc/init.d/sterowniki
+#
+
+### BEGIN INIT INFO
+# Provides: sterowniki
+# Required-Start: $all
+# Required-Stop: $all
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+# Short-Description: Short script description
+# Description: Longer script description.
+### END INIT INFO
+
+# Some things that run always
+touch /var/lock/sterowniki
+
+# Carry out specific functions when asked to by the system
+case "$1" in
+  start)
+    cd /sys/bus/i2c/devices/i2c-1
+    echo pca9539 0x74 > new_device
+    echo ad5392-5 0x54 > new_device
+    ;;
+  stop)
+    echo "Stop"
+    ;;
+  *)
+    echo "Usage: /etc/init.d/sterowniki {start|stop}"
+    exit 1
+    ;;
+esac
+
+exit 0
+
+#output.sh
+
+if [ -z "$1" ]
+ then
+  echo "sets ad5392-5 output to desired voltage"
+  echo "usage: output channel raw [calibscale] [calibbias]"
+  echo "possible values:"
+  echo "        - channel = 0 .. 7"
+  echo "        - raw = 0 .. 16383"
+  echo "        - calibscale = 0 .. 16383 default 16382"
+  echo "        - calibbias = 0 .. 8191 default 0"
+  exit 1
+ fi
+
+rm -r output_log_$1
+
+cd ad5392-5-device                    #   ad5392-5-device is a symbolic link fo$
+                                      #       /sys/bus/iio/devices/iio:device0
+
+echo Our DAC named: \" $(cat name) \" and says hello!>> $HOME/output_log_$1
+date>> $HOME/output_log_$1
+
+echo channel $1 choosen>> $HOME/output_log_$1
+echo raw is to be $2>> $HOME/output_log_$1
+echo $2 > out_voltage$1_raw
+if [ ! -z "$3" ]
+ then
+  echo calibscale is to be $3
+  echo $3 > out_voltage$1_calibscale
+ else
+   echo 16382 > out_voltage$1_calibscale
+fi
+if [ ! -z "$4" ]
+ then
+  echo calibbias is to be $4
+  echo $4 > out_voltage$1_calibbias
+ else
+  echo 0 > out_voltage$1_calibbias
+fi
+RAW="$(cat out_voltage$1_raw)"
+SCALE="$(cat out_voltage_scale)"
+CALIBSCALE="$(cat out_voltage$1_calibscale)"
+CALIBBIAS="$(cat out_voltage$1_calibbias)"
+echo out_voltage_scale = $SCALE>> $HOME/output_log_$1
+echo out_voltage$1_raw = $RAW>> $HOME/output_log_$1
+echo out_voltage$1_calibscale = $CALIBSCALE>> $HOME/output_log_$1
+echo out_voltage$1_calibbias = $CALIBBIAS>> $HOME/output_log_$1
+PWR="$(echo '2^14' | bc)"
+VOLT=$(echo "(($RAW*($CALIBSCALE+2))/$PWR+$CALIBBIAS-8192)*$SCALE" | bc)
+echo voltage = $VOLT mV>> $HOME/output_log_$1
+echo "Channel \"$1\" of DAC Done">> $HOME/output_log_$1
+nano $HOME/output_log_$1
+
+
+#gexp.sh
+
+if [ -z "$1" ]
+ then
+  echo "sets pca9539 output in desired logic state"
+  echo "usage: gexp output_num logic_state"
+  echo "possible values:"
+  echo "        - output_num = 0 .. 15"
+  echo "        - logic_state = 0 - low / 1 - high"
+  echo "program creates log file in user home directory"
+  echo "to see the log: cat $HOME/gexp-log"
+  exit 1
+ fi
+echo gexp started >> $HOME/gexp-log
+cd /sys/class/gpio
+PIN="$(expr 1008 + $1)"         #PIN is gpio number for pin $1 of gpiochip1008
+if [ ! -e gpio$PIN ]            #if file gpio$PIN doesnt exist
+ then
+  echo gpio$PIN file doesnt exist: creating >> $HOME/gexp-log
+  echo $PIN > export            #this activates pin $1
+fi
+if (($1 < 8)); then
+OUT="$(echo IO0_$1)"
+else
+OUT="$(echo IO1_"$(expr $1 - 8)")"
+fi
+echo setting pin $OUT direction to output >> $HOME/gexp-log
+echo setting pin $OUT direction to output
+echo out > gpio$PIN/direction #this sets pin MODE0$1 as output
+echo setting pin $OUT state to $2 >> $HOME/gexp-log
+echo setting pin $OUT state to $2
+echo $2 > gpio$PIN/value        #this sets pin MODE0$1 logic state
+echo gexp exiting >> $HOME/gexp-log
+echo "DONE"

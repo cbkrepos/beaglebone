@@ -1,0 +1,4 @@
+cd /media
+mkdir card
+mount -v /dev/mmcblk1p1 /media/card
+dd if=/media/card/backup.img of=/dev/mmcblk0 bs=1M
