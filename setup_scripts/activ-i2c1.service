@@ -1,0 +1,9 @@
+#/lib/systemd/activ-i2c1.service
+[Unit]
+Description=<I2C-1 Activation>
+After=syslog.target network.target
+[Service]
+Type=simple
+ExecStart=/usr/bin/activ-i2c1.sh
+[Install]
+WantedBy=multi-user.target
